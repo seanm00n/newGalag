@@ -1,7 +1,5 @@
 import pygame, threading
-from time import sleep
 
-# 클래스 멤버변수에 접근할 때 = 내부: cls 외부: GM 접근
 # GameManager-------------------------------------------------------------------------#
 class GM: 
     @classmethod
@@ -16,13 +14,14 @@ class GM:
         cls.clock = pygame.time.Clock()
         cls.timer = pygame.time.get_ticks()
         cls.isgaov = False
+        cls.cooltime = 2000
         
     @classmethod
     def ioupdate(cls):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 GM.running = False
-            if event.type == pygame.KEYDOWN: # 동시 입력에도 이동이 매끄럽게 되기 위해 수정
+            if event.type == pygame.KEYDOWN: 
                 if event.key in cls.keystates:
                     cls.keystates[event.key] = True
                     cls.player.move()
@@ -43,7 +42,7 @@ class GM:
     @classmethod
     def genenemy(cls):
         cls.now = pygame.time.get_ticks()
-        if cls.now - cls.timer >= 5000:
+        if cls.now - cls.timer >= cls.cooltime:
             cls.timer = cls.now
             enemy = Enemy()
             
@@ -70,14 +69,18 @@ class GM:
         pygame.display.update()
         
     @classmethod
-    def diffup(cls):
+    def setdiff(cls):
         if cls.score >= 150:
-            for instance in cls.instances:
-                if instance.tag == "enemy":
-                    instance.Dx += 1
+            cls.gencool = 1700
+        elif cls.score >= 300:
+            cls.gencool = 1400
+        elif cls.score >= 450:
+            cls.gencool = 1100
+        elif cls.score >= 600:
+            cls.gencool = 800
         
 # Player---------------------------------------------------------------------------------#
-class Player(GM): # 벽에 닿으면 이동 안되게 설정
+class Player(GM): 
     allie = "player"
     tag = "player"
     hp = 100
@@ -111,7 +114,7 @@ class Player(GM): # 벽에 닿으면 이동 안되게 설정
     def update(self):
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
         self.X += self.Dx
-        if self.X <= 0: # 멈출 때만 적용됨 
+        if self.X <= 0: 
             self.lWall = 0
         elif self.X > 750:
             self.rWall = 0
@@ -129,9 +132,10 @@ class Enemy(GM):
         self.col = pygame.image.load("plane.gif")
         self.X, self.Y, self.Dx, self.Dy = 0, 10, 2, 2
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
+        self.cooltime = 1000
         
     def fire(self):
-        if self.now - self.timer >= 1000: # 0으로 하면 정확도 떨어져 수정 
+        if self.now - self.timer >= self.cooltime: 
             self.timer = self.now
             missile = Missile(self.X, self.Y, 1)
             missile.allie = "enemy"
@@ -142,6 +146,7 @@ class Enemy(GM):
         del self
 
     def update(self):
+        self.setdiff()
         if self.Y > 600:
             GM.instances.remove(self)
             return
@@ -150,13 +155,23 @@ class Enemy(GM):
         self.X += self.Dx
         self.now = pygame.time.get_ticks()
         
-        if self.X <= 0 or self.X > 750: # 방향 전환 
+        if self.X <= 0 or self.X > 750: 
             self.Dx *= -1
             self.Y += 30
             
         self.fire()
 
         GM.display.blit(self.col, (self.X, self.Y))
+        
+    def setdiff(self):
+        if GM.score >= 150:
+            self.cooltime = 900
+        elif GM.score >= 300:
+            self.cooltime = 800
+        elif GM.score >= 450:
+            self.cooltime = 700
+        elif GM.score >= 600:
+            self.cooltime = 600
         
 # Missile--------------------------------------------------------------------------------#            
 class Missile(GM):
@@ -173,24 +188,29 @@ class Missile(GM):
         self.now = pygame.time.get_ticks()
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
         for target in GM.instances:
-            if self.rect.colliderect(target.rect):
-                if target.tag == "player" and self.allie == "enemy":
-                    self.death()
-                    target.hit()
-                elif target.tag == "enemy" and self.allie == "player":
-                    self.death()
-                    target.death()
+            try :
+                if self.rect.colliderect(target.rect):
+                    if target.tag == "player" and self.allie == "enemy":
+                        self.death()
+                        target.hit()
+                    elif target.tag == "enemy" and self.allie == "player":
+                        self.death()
+                        target.death()
+            except:
+                print("no rect")
+                
+            
                 
         self.Y += self.Dy
             
-        if self.now - self.timer >= 2000: # 0으로 하면 정확도 떨어져 수정 
+        if self.now - self.timer >= 2000: 
             self.timer = self.now
             self.death()
             
         GM.display.blit(self.col, (self.X, self.Y))
         
     def death(self):
-        GM.instances.remove(self) #
+        GM.instances.remove(self)
 
 # main---------------------------------------------#
 pygame.init()
@@ -204,9 +224,9 @@ while GM.running:
         GM.ioupdate()
         GM.genenemy()
         GM.callupdates(*GM.instances)
-        GM.diffup()
+        GM.setdiff()
         pygame.display.update()
-        GM.clock.tick(60) # 1초 당 60 프레임
+        GM.clock.tick(60)
         if GM.isgaov:
             GM.gameover()
             break
