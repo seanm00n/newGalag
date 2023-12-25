@@ -44,8 +44,8 @@ class GM:
     def genenemy(cls):
         cls.now = pygame.time.get_ticks()
         if cls.now - cls.timer >= 5000:
-            enemy = Enemy()
             cls.timer = cls.now
+            enemy = Enemy()
             
     @classmethod
     def callupdates(cls, *instances):
@@ -88,7 +88,7 @@ class Player(GM): # 벽에 닿으면 이동 안되게 설정
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
         
     def fire(self):
-        missile = Missile(self.X, self.Y, 1)
+        missile = Missile(self.X, self.Y, -1)
         missile.allie = "player"
 
     def move(self):            
@@ -125,7 +125,7 @@ class Enemy(GM):
     tag = "enemy"
     def __init__(self):
         GM.instances.append(self)
-        self.timer = #
+        self.timer = pygame.time.get_ticks()
         self.col = pygame.image.load("plane.gif")
         self.X, self.Y, self.Dx, self.Dy = 0, 10, 2, 2
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
@@ -133,7 +133,7 @@ class Enemy(GM):
     def fire(self):
         if self.now - self.timer >= 1000: # 0으로 하면 정확도 떨어져 수정 
             self.timer = self.now
-            missile = Missile(self.X, self.Y, -1)
+            missile = Missile(self.X, self.Y, 1)
             missile.allie = "enemy"
     
     def death(self):
@@ -148,7 +148,7 @@ class Enemy(GM):
         
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
         self.X += self.Dx
-        self.now = #
+        self.now = pygame.time.get_ticks()
         
         if self.X <= 0 or self.X > 750: # 방향 전환 
             self.Dx *= -1
@@ -191,11 +191,11 @@ class Missile(GM):
         
     def death(self):
         GM.instances.remove(self) #
-        del self
 
 # main---------------------------------------------#
 pygame.init()
 GM.init()
+enemy = Enemy()
 while GM.running:
     for event in pygame.event.get(): 
         if event.type == pygame.QUIT:
