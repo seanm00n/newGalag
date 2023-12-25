@@ -17,7 +17,18 @@ class GM:
         cls.cooltime = 2000
         
     @classmethod
-    def ioupdate(cls):
+    def update(cls):
+        cls.setdiff()
+        cls.genenemy()
+        cls.getinput()
+        cls.display.fill((0,0,0))        
+        cls.scoretext = cls.font.render(f"score: {cls.score}",False, (255,255,255))
+        cls.hptext = cls.font.render(f"HP: {cls.player.hp}",False,(255,255,255))
+        cls.display.blit(cls.hptext, (10,520))
+        cls.display.blit(cls.scoretext,(10,550))
+        
+    @classmethod
+    def getinput(cls):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 GM.running = False
@@ -31,18 +42,13 @@ class GM:
             if event.type == pygame.KEYUP:
                 if event.key in GM.keystates:
                     cls.keystates[event.key] = False
-                    cls.player.move()
-        
-        cls.display.fill((0,0,0))        
-        cls.scoretext = cls.font.render(f"score: {cls.score}",False, (255,255,255))
-        cls.hptext = cls.font.render(f"HP: {cls.player.hp}",False,(255,255,255))
-        cls.display.blit(cls.hptext, (10,520))
-        cls.display.blit(cls.scoretext,(10,550))        
+                    cls.player.move()     
         
     @classmethod
     def genenemy(cls):
         cls.now = pygame.time.get_ticks()
         if cls.now - cls.timer >= cls.cooltime:
+            print(cls.cooltime)
             cls.timer = cls.now
             enemy = Enemy()
             
@@ -70,20 +76,16 @@ class GM:
         
     @classmethod
     def setdiff(cls):
-        if cls.score >= 150:
-            cls.gencool = 1700
-        elif cls.score >= 300:
-            cls.gencool = 1400
-        elif cls.score >= 450:
-            cls.gencool = 1100
-        elif cls.score >= 600:
-            cls.gencool = 800
+        cls.rank = cls.score//100
+        if cls.rank > 15:
+            cls.rank = 15      
+        cls.cooltime = 2000 - (cls.rank * 100)
         
 # Player---------------------------------------------------------------------------------#
 class Player(GM): 
     allie = "player"
     tag = "player"
-    hp = 100
+    hp = 10
     def __init__(self):
         GM.instances.append(self)
         self.col = pygame.image.load("plane.gif")
@@ -96,9 +98,9 @@ class Player(GM):
 
     def move(self):            
         if GM.keystates[pygame.K_LEFT]:
-            self.Dx = -4*self.lWall
+            self.Dx = -4
         elif GM.keystates[pygame.K_RIGHT]:
-            self.Dx = 4*self.rWall
+            self.Dx = 4
         else:
             self.Dx = 0
 
@@ -112,14 +114,14 @@ class Player(GM):
         del self
 
     def update(self):
+        self.X += self.Dx # 여기 두는게 반응이 빠름
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
-        self.X += self.Dx
-        if self.X <= 0: 
-            self.lWall = 0
+        
+        if self.X < 0:
+            self.X = 0
         elif self.X > 750:
-            self.rWall = 0
-        else:
-            self.lWall, self.rWall = 1, 1
+            self.X = 750
+        
         GM.display.blit(self.col, (self.X, self.Y))
 
 # Enemy----------------------------------------------------------------------------------#
@@ -147,31 +149,27 @@ class Enemy(GM):
 
     def update(self):
         self.setdiff()
-        if self.Y > 600:
-            GM.instances.remove(self)
-            return
-        
-        self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
+        self.fire()
         self.X += self.Dx
+        self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
         self.now = pygame.time.get_ticks()
         
         if self.X <= 0 or self.X > 750: 
             self.Dx *= -1
             self.Y += 30
             
-        self.fire()
-
+        if self.Y > 600:
+            GM.instances.remove(self)
+            return
+            
+        
         GM.display.blit(self.col, (self.X, self.Y))
         
     def setdiff(self):
-        if GM.score >= 150:
-            self.cooltime = 900
-        elif GM.score >= 300:
-            self.cooltime = 800
-        elif GM.score >= 450:
-            self.cooltime = 700
-        elif GM.score >= 600:
-            self.cooltime = 600
+        self.rank = GM.score//100
+        if self.rank > 15:
+            self.rank = 15
+        self.cooltime = 1000 - (self.rank * 50)
         
 # Missile--------------------------------------------------------------------------------#            
 class Missile(GM):
@@ -183,10 +181,8 @@ class Missile(GM):
         self.col = pygame.image.load("plane.gif")
         self.X, self.Y, self.Dx, self.Dy = pX, pY, 0, 8*pDir
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
-        
-    def update(self):
-        self.now = pygame.time.get_ticks()
-        self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
+
+    def checkcoll(self):
         for target in GM.instances:
             try :
                 if self.rect.colliderect(target.rect):
@@ -197,11 +193,13 @@ class Missile(GM):
                         self.death()
                         target.death()
             except:
-                print("no rect")
+                print("catch exception: no rect")
                 
-            
-                
+    def update(self):
+        self.checkcoll()
+        self.now = pygame.time.get_ticks()
         self.Y += self.Dy
+        self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())                
             
         if self.now - self.timer >= 2000: 
             self.timer = self.now
@@ -220,14 +218,14 @@ while GM.running:
     for event in pygame.event.get(): 
         if event.type == pygame.QUIT:
             GM.running = False
+            
     while GM.running and not GM.isgaov:
-        GM.ioupdate()
-        GM.genenemy()
-        GM.callupdates(*GM.instances)
-        GM.setdiff()
-        pygame.display.update()
-        GM.clock.tick(60)
         if GM.isgaov:
             GM.gameover()
             break
+        GM.update()
+        GM.callupdates(*GM.instances)
+        pygame.display.update()
+        GM.clock.tick(60)
+
 pygame.quit()
