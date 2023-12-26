@@ -1,4 +1,4 @@
-import pygame, threading, pdb
+import pygame, threading, pdb, csv
 
 # GameManager-------------------------------------------------------------------------#
 class GM: 
@@ -8,13 +8,14 @@ class GM:
         cls.score = 0 
         cls.display = pygame.display.set_mode((800,600))
         cls.font = pygame.font.SysFont('Comic Sans MS', 30)
-        cls.keystates = {pygame.K_LEFT: False, pygame.K_RIGHT: False}
+        cls.keystates = {pygame.K_LEFT: False, pygame.K_RIGHT: False, pygame.K_UP: False, pygame.K_DOWN: False}
         cls.running = True
         cls.player = Player()
         cls.clock = pygame.time.Clock()
         cls.timer = pygame.time.get_ticks()
         cls.isgaov = False
         cls.cooltime = 2000
+        cls.name = cls.getname()
         
     @classmethod
     def update(cls):
@@ -34,7 +35,7 @@ class GM:
                 if event.type == pygame.QUIT:
                     GM.running = False
                     return
-                if event.type == pygame.KEYDOWN: 
+                if event.type == pygame.KEYDOWN:
                     if event.key in cls.keystates:
                         cls.keystates[event.key] = True
                         cls.player.move()
@@ -69,14 +70,14 @@ class GM:
     @classmethod
     def gameover(cls):
         cls.isgaov = True
-        print("GameOver score: {cls.score}")
+        print(f"GameOver score: {cls.score}")
         cls.instances.clear()
-        cls.gaovtext = cls.font.render("Game Over",False, (255,255,255)) # 종료 구현
-        cls.display.fill((0,0,0))
-        cls.display.blit(cls.gaovtext,(320,270))
-        cls.display.blit(cls.scoretext, (330,300))
-        pygame.display.update()
-        cls.btn = Button(330, 500, 100, 30, "Restart", cls.display)
+        cls.gaovtext = cls.font.render("Game Over",False, (255,255,255))
+        cls.restartbtn = Button(350, 470, 100, 30, "Restart")
+        cls.rankbtn = Button(350, 530, 100, 30, "Ranking")
+        cls.ranking = Ranking(250,10,300,500) 
+        cls.isrankopen = False
+        cls.updatecsv()
         
         while cls.isgaov:
             for event in pygame.event.get():
@@ -84,14 +85,28 @@ class GM:
                     if event.type == pygame.QUIT:
                         GM.running = False
                         return
-                    if event.type == pygame.MOUSEBUTTONDOWN and cls.btn.rect.collidepoint(event.pos):
-                        print("Restart")
-                        cls.isgaov = False
-                        cls.init()
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        if cls.restartbtn.rect.collidepoint(event.pos):
+                            print("Restart")
+                            cls.isgaov = False
+                            cls.init()
+                        elif cls.rankbtn.rect.collidepoint(event.pos):
+                            if cls.isrankopen:
+                                print("closed")
+                                cls.isrankopen = False
+                            else:
+                                print("Ranking")
+                                cls.isrankopen = True
+                                
                 except:
                     print("catch exception::GM::gameover")
-            cls.btn.draw(cls.display)
-            pygame.display.flip()
+            cls.display.fill((0,0,0))
+            cls.display.blit(cls.gaovtext,(320,270))
+            cls.display.blit(cls.scoretext, (330,300))
+            cls.restartbtn.draw()
+            cls.rankbtn.draw()
+            cls.ranking.draw()
+            pygame.display.update()
         
     @classmethod
     def setdiff(cls):
@@ -99,26 +114,94 @@ class GM:
         if cls.rank > 15:
             cls.rank = 15      
         cls.cooltime = 2000 - (cls.rank * 100)
+
+    @classmethod
+    def getname(cls):
+        rect = pygame.Rect(330,500,100,20)
+        guidefont = pygame.font.SysFont('Comic Sans MS',18)
+        inputfont = pygame.font.SysFont('Comic Sans MS',14)
+        guidetext = guidefont.render("Input name", False, (255,255,255))
+        inputext = ""
+        while True:
+            pygame.draw.rect(cls.display, (0,0,0), rect)
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        enterkey = True
+                        return inputext
+                    elif event.key == pygame.K_BACKSPACE:
+                        inputext = inputext[:-1]
+                    else:
+                        if len(inputext) <= 10:
+                            inputext += event.unicode
+                        
+            
+            cls.display.blit(guidetext, (330,470))
+            pygame.draw.rect(GM.display, (255,255,255),rect)
+            tsurface = inputfont.render(inputext, True, (0,0,0))
+            trect = tsurface.get_rect(center=rect.center) 
+            GM.display.blit(tsurface, trect)
+            pygame.display.update()
+
+    @classmethod
+    def readcsv(cls):
+        csvpath = "rankdata.csv"
+        with open(csvpath, 'r', newline='', encoding='utf-8') as csvfile:
+            rankdata = csv.reader(csvfile)
+            data = list(rankdata)
+        return data
+            
+    @classmethod
+    def updatecsv(cls):
+        csvpath = "rankdata.csv"
+        data = cls.readcsv()
+        new_row = [cls.name, str(cls.score)]
+        data.append(new_row)
+        data.sort(key=lambda x: int(x[1]) if x[1].isdigit() else 0, reverse=True)
+        with open(csvpath, 'w', newline='', encoding='utf-8') as csvfile:
+            csv.writer(csvfile).writerows(data)
         
+# Ranking--------------------------------------------------------------------------------#
+class Ranking: 
+    def __init__(self,x,y,width,height):
+        self.rect = pygame.Rect(x,y,width,height)
+        self.font = pygame.font.SysFont('Comic Sans MS',20)
+        
+    def draw(self):
+        if GM.isrankopen:
+            pygame.draw.rect(GM.display, (0,0,0), self.rect)
+            pygame.draw.rect(GM.display, (255,255,255), self.rect, 2)
+            lineheight = 25
+            csvtext = "\n".join([f"{row[0]:<10} {row[1]}" for row in GM.readcsv()[:20]])
+            lines = csvtext.split("\n")
+            for index, line in enumerate(lines):
+                tsurface = self.font.render(line, True, (255,255,255))
+                trect = tsurface.get_rect(center=(self.rect.centerx, self.rect.top + index * lineheight + 20))
+                GM.display.blit(tsurface, trect)
+
 # Button---------------------------------------------------------------------------------#
 class Button:
-    def __init__(self, x, y, width, height, text, display):
-        self.rect = pygame.Rect(x,y,width,height)
+    def __init__(self, x, y, width, height, text):
+        self.rect = pygame.Rect(x, y, width, height)
         self.text = text
-        self.display = display
         self.font = pygame.font.SysFont('Comic Sans MS', 25)
         
-    def draw(self, display):
-        pygame.draw.rect(self.display, (255,255,255),self.rect)
+    def draw(self): 
+        if self.text == "Ranking" or self.text == "Close":
+            if GM.isrankopen:
+                self.text = "Close"
+            else:
+                self.text = "Ranking"
+        pygame.draw.rect(GM.display, (255,255,255),self.rect)
         tsurface = self.font.render(self.text, True, (0,0,0))
         trect = tsurface.get_rect(center=self.rect.center)
-        self.display.blit(tsurface, trect)
+        GM.display.blit(tsurface, trect)
         
 # Player---------------------------------------------------------------------------------#
 class Player(GM): 
     allie = "player"
     tag = "player"
-    hp = 10
+    hp = 1
     def __init__(self):
         GM.instances.append(self)
         self.col = pygame.image.load("player.png")
@@ -129,13 +212,19 @@ class Player(GM):
         missile = Missile(self.X+12, self.Y-22, -1)
         missile.allie = "player"
 
-    def move(self):            
+    def move(self):
         if GM.keystates[pygame.K_LEFT]:
             self.Dx = -4
         elif GM.keystates[pygame.K_RIGHT]:
             self.Dx = 4
         else:
             self.Dx = 0
+        if GM.keystates[pygame.K_UP]:
+            self.Dy = -4
+        elif GM.keystates[pygame.K_DOWN]:
+            self.Dy = 4
+        else :
+            self.Dy = 0
 
     def hit(self):
         self.hp -= 1
@@ -147,13 +236,18 @@ class Player(GM):
         del self
 
     def update(self):
-        self.X += self.Dx # 여기 두는게 반응이 빠름
+        self.X += self.Dx 
+        self.Y += self.Dy
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
         
-        if self.X < 0:
+        if self.X < 0: 
             self.X = 0
         elif self.X > 750:
             self.X = 750
+        if self.Y < 50: 
+            self.Y = 50
+        elif self.Y > 550:
+            self.Y = 550
         
         GM.display.blit(self.col, (self.X, self.Y))
 
@@ -250,7 +344,6 @@ class Missile(GM):
 # main---------------------------------------------#
 pygame.init()
 GM.init()
-enemy = Enemy()
 while GM.running:
     for event in pygame.event.get(): 
         if event.type == pygame.QUIT:
