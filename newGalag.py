@@ -1,4 +1,4 @@
-import pygame, threading
+import pygame, threading, pdb
 
 # GameManager-------------------------------------------------------------------------#
 class GM: 
@@ -33,6 +33,7 @@ class GM:
             try:
                 if event.type == pygame.QUIT:
                     GM.running = False
+                    return
                 if event.type == pygame.KEYDOWN: 
                     if event.key in cls.keystates:
                         cls.keystates[event.key] = True
@@ -68,20 +69,29 @@ class GM:
     @classmethod
     def gameover(cls):
         cls.isgaov = True
-        print("GameOver")
+        print("GameOver score: {cls.score}")
         cls.instances.clear()
         cls.gaovtext = cls.font.render("Game Over",False, (255,255,255)) # 종료 구현
         cls.display.fill((0,0,0))
         cls.display.blit(cls.gaovtext,(320,270))
         cls.display.blit(cls.scoretext, (330,300))
         pygame.display.update()
-        # restart 버튼 추가 및 위치 수정
-        #while :
+        cls.btn = Button(330, 500, 100, 30, "Restart", cls.display)
         
-
-    #@classmethod
-    #def genbutton(cls):
-        
+        while cls.isgaov:
+            for event in pygame.event.get():
+                try:
+                    if event.type == pygame.QUIT:
+                        GM.running = False
+                        return
+                    if event.type == pygame.MOUSEBUTTONDOWN and cls.btn.rect.collidepoint(event.pos):
+                        print("Restart")
+                        cls.isgaov = False
+                        cls.init()
+                except:
+                    print("catch exception::GM::gameover")
+            cls.btn.draw(cls.display)
+            pygame.display.flip()
         
     @classmethod
     def setdiff(cls):
@@ -90,11 +100,25 @@ class GM:
             cls.rank = 15      
         cls.cooltime = 2000 - (cls.rank * 100)
         
+# Button---------------------------------------------------------------------------------#
+class Button:
+    def __init__(self, x, y, width, height, text, display):
+        self.rect = pygame.Rect(x,y,width,height)
+        self.text = text
+        self.display = display
+        self.font = pygame.font.SysFont('Comic Sans MS', 25)
+        
+    def draw(self, display):
+        pygame.draw.rect(self.display, (255,255,255),self.rect)
+        tsurface = self.font.render(self.text, True, (0,0,0))
+        trect = tsurface.get_rect(center=self.rect.center)
+        self.display.blit(tsurface, trect)
+        
 # Player---------------------------------------------------------------------------------#
 class Player(GM): 
     allie = "player"
     tag = "player"
-    hp = 1
+    hp = 10
     def __init__(self):
         GM.instances.append(self)
         self.col = pygame.image.load("player.png")
@@ -102,7 +126,7 @@ class Player(GM):
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
         
     def fire(self):
-        missile = Missile(self.X, self.Y, -1)
+        missile = Missile(self.X+12, self.Y-22, -1)
         missile.allie = "player"
 
     def move(self):            
@@ -148,8 +172,9 @@ class Enemy(GM):
     def fire(self):
         if self.now - self.timer >= self.cooltime: 
             self.timer = self.now
-            missile = Missile(self.X, self.Y, 1)
+            missile = Missile(self.X+16, self.Y+30, 1)
             missile.allie = "enemy"
+            
     
     def death(self):
         GM.score += 15
