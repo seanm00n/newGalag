@@ -30,25 +30,27 @@ class GM:
     @classmethod
     def getinput(cls):
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                GM.running = False
-            if event.type == pygame.KEYDOWN: 
-                if event.key in cls.keystates:
-                    cls.keystates[event.key] = True
-                    cls.player.move()
-                if event.key == pygame.K_SPACE:
-                    cls.player.fire()
-                    
-            if event.type == pygame.KEYUP:
-                if event.key in GM.keystates:
-                    cls.keystates[event.key] = False
-                    cls.player.move()     
-        
+            try:
+                if event.type == pygame.QUIT:
+                    GM.running = False
+                if event.type == pygame.KEYDOWN: 
+                    if event.key in cls.keystates:
+                        cls.keystates[event.key] = True
+                        cls.player.move()
+                    if event.key == pygame.K_SPACE:
+                        cls.player.fire()
+                        
+                if event.type == pygame.KEYUP:
+                    if event.key in GM.keystates:
+                        cls.keystates[event.key] = False
+                        cls.player.move()
+            except:
+                print("catch exception::GM::getinput()")
+            
     @classmethod
     def genenemy(cls):
         cls.now = pygame.time.get_ticks()
         if cls.now - cls.timer >= cls.cooltime:
-            print(cls.cooltime)
             cls.timer = cls.now
             enemy = Enemy()
             
@@ -73,6 +75,13 @@ class GM:
         cls.display.blit(cls.gaovtext,(320,270))
         cls.display.blit(cls.scoretext, (330,300))
         pygame.display.update()
+        # restart 버튼 추가 및 위치 수정
+        #while :
+        
+
+    #@classmethod
+    #def genbutton(cls):
+        
         
     @classmethod
     def setdiff(cls):
@@ -85,10 +94,10 @@ class GM:
 class Player(GM): 
     allie = "player"
     tag = "player"
-    hp = 10
+    hp = 1
     def __init__(self):
         GM.instances.append(self)
-        self.col = pygame.image.load("plane.gif")
+        self.col = pygame.image.load("player.png")
         self.X, self.Y, self.Dx, self.Dy = 400, 550, 0, 0
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
         
@@ -131,7 +140,7 @@ class Enemy(GM):
     def __init__(self):
         GM.instances.append(self)
         self.timer = pygame.time.get_ticks()
-        self.col = pygame.image.load("plane.gif")
+        self.col = pygame.image.load("enemy.png")
         self.X, self.Y, self.Dx, self.Dy = 0, 10, 2, 2
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
         self.cooltime = 1000
@@ -178,7 +187,10 @@ class Missile(GM):
     def __init__(self, pX, pY, pDir):
         GM.instances.append(self)
         self.timer = pygame.time.get_ticks()
-        self.col = pygame.image.load("plane.gif")
+        if pDir == 1:
+            self.col = pygame.image.load("emissile.png")
+        else:
+            self.col = pygame.image.load("pmissile.png")            
         self.X, self.Y, self.Dx, self.Dy = pX, pY, 0, 8*pDir
         self.rect = pygame.Rect(self.X, self.Y, self.col.get_width(), self.col.get_height())
 
@@ -193,7 +205,7 @@ class Missile(GM):
                         self.death()
                         target.death()
             except:
-                print("catch exception: no rect")
+                print("catch exception::Missile::checkcoll()")
                 
     def update(self):
         self.checkcoll()
@@ -220,12 +232,13 @@ while GM.running:
             GM.running = False
             
     while GM.running and not GM.isgaov:
-        if GM.isgaov:
-            GM.gameover()
-            break
         GM.update()
         GM.callupdates(*GM.instances)
         pygame.display.update()
         GM.clock.tick(60)
-
+        
+        if GM.isgaov:
+            GM.gameover()
+            break
+                
 pygame.quit()
