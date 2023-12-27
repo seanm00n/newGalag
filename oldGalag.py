@@ -5,13 +5,13 @@ display = pygame.display.set_mode((800,600))
 myfont = pygame.font.SysFont('Comic Sans MS', 30)
 score = 0
 
-player = pygame.image.load("plane.gif")
+player = pygame.image.load("player.png")
 playerX, playerY, playerDx, playerDy = 400, 550, 0, 0
 
-alien = pygame.image.load("plane.gif")
+alien = pygame.image.load("enemy.png")
 alienX, alienY, alienDx, alienDy = 0, 10, 0.1, 0.1
 
-missile = pygame.image.load("plane.gif")
+missile = pygame.image.load("pmissile.png")
 missileX, missileY, missileDx, missileDy = 0, 1000, 0, 0.1
 missileState = "hidden"
 

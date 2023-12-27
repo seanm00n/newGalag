@@ -201,7 +201,7 @@ class Button:
 class Player(GM): 
     allie = "player"
     tag = "player"
-    hp = 1
+    hp = 10
     def __init__(self):
         GM.instances.append(self)
         self.col = pygame.image.load("player.png")
